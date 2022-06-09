@@ -46,5 +46,11 @@ http
         res.end("Error - Beatle not found");
       }
     }
+
+    if (req.url === "/") {
+      res.writeHead(200, { "Content-Type": "text/html" });
+      const index = fs.readFileSync(`${__dirname}/index.html`);
+      res.end(index);
+    }
   })
   .listen(8080, "127.0.0.1");
