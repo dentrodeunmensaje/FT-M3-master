@@ -35,9 +35,11 @@ http
       res.writeHead(200, { "Content-Type": "application/json" });
       res.end(JSON.stringify(beatles));
     }
-    if (req.url.substring(0,5) === "/api/" && req.url.length > 5) {
+    else if (req.url.substring(0,5) === "/api/" && req.url.length > 5) {
+      console.log('Entro al if');
       let findBeatle = req.url.split('/').pop();
-      let beatle = beatles.find(beatle => encondeURI(beatle.name) === findBeatle);
+      console.log(findBeatle);  
+      let beatle = beatles.find(beatle => findBeatle === encodeURI(beatle.name));
       if (beatle) {
         res.writeHead(200, { "Content-Type": "application/json" });
         res.end(JSON.stringify(beatle));
@@ -51,6 +53,20 @@ http
       res.writeHead(200, { "Content-Type": "text/html" });
       const index = fs.readFileSync(`${__dirname}/index.html`);
       res.end(index);
+    }
+
+    let findBeatle = req.url.split('/').pop();
+    let foundBeatle = beatles.find(beatle => findBeatle === encodeURI(beatle.name));  
+    if (foundBeatle) {
+      res.writeHead(200, { "Content-Type": "text/html" });
+      let index = fs.readFileSync(`${__dirname}/beatle.html`, 'utf8');
+      index = index.replace(/{name}/g, foundBeatle.name);
+      index = index.replace('{birthdate}', foundBeatle.birthdate);
+      index = index.replace('{profilePic}', foundBeatle.profilePic);
+      res.end(index);
+    }else{
+      res.writeHead(404, { "Content-Type": "text/plain" });
+      res.end("Error - Beatle not found");
     }
   })
   .listen(8080, "127.0.0.1");
