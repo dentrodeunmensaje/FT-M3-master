@@ -38,26 +38,62 @@ $Promise.prototype.then = function (successCb, errorCb) {
   if (typeof errorCb !== "function") {
     errorCb = false;
   }
-  this._handlerGroups.push({ successCb, errorCb });
+  const downstreamPromise = new $Promise(() => {});
+  this._handlerGroups.push({ successCb, errorCb, downstreamPromise });
   if (this._state !== "pending") {
     this._callHandlers();
   }
+  return downstreamPromise;
 };
 
 $Promise.prototype._callHandlers = function () {
-  while (this._handlerGroups.length > 0) {
+  while (this._handlerGroups.length) {
     let current = this._handlerGroups.shift();
     if (this._state === "fulfilled") {
-      current.successCb && current.successCb(this._value);
+      if (!current.successCb) {
+        current.downstreamPromise._internalResolve(this._value);
+      } else {
+        try {
+          const result = current.successCb(this._value);
+          if (result instanceof $Promise) {
+            return result.then(
+              (value) => current.downstreamPromise._internalResolve(value),
+              (error) => current.downstreamPromise._internalReject(error)
+            );
+          } else {
+            current.downstreamPromise._internalResolve(result);
+          }
+        } catch (err) {
+            current.downstreamPromise._internalReject(err);
+        }
+      }
+      
     } else if (this._state === "rejected") {
-      current.errorCb && current.errorCb(this._value);
+      if (!current.errorCb) {
+        current.downstreamPromise._internalReject(this._value);
+      } else {
+        try {
+          const result = current.errorCb(this._value);
+            if (result instanceof $Promise) {
+                return result.then(
+                    (value) => current.downstreamPromise._internalResolve(value),
+                    (error) => current.downstreamPromise._internalReject(error)
+                );
+                } else {
+                    current.downstreamPromise._internalResolve(result);
+                }
+        } catch (err) {
+            current.downstreamPromise._internalReject(err);
+        }
+      }
+      
     }
   }
 };
 
 $Promise.prototype.catch = function (errorCb) {
-    return this.then(null, errorCb);
-}
+  return this.then(null, errorCb);
+};
 
 /*-------------------------------------------------------
 El spec fue diseñado para funcionar con Test'Em, por lo tanto no necesitamos
